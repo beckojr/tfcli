@@ -1,4 +1,4 @@
-package tfe
+package tfcli
 
 import (
 	"context"
@@ -45,7 +45,7 @@ func (p *project) Create(organization string, name string, description string) (
 		Description: &description,
 	})
 	if err != nil {
-		return &tfe.Project{}, err
+		return nil, err
 	}
 	return project, nil
 }

@@ -6,22 +6,25 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"tfcli/tfe"
+	"log"
+	"tfcli/internal"
 
 	"github.com/hashicorp/jsonapi"
 	"github.com/spf13/cobra"
 )
 
-var p tfe.Project
-
-// var client, err = tfe.NewClient(&tfe.Config{
+// var client, err = tfcli.NewClient(&tfcli.Config{
 // 	Token: "YOUR_TOKEN",
 // })
 
-// var client *tfe.Client
+// var client *tfcli.Client
 
 // projectCmd represents the project command
 var organization string
+var jsonFormat bool
+var name string
+var description string
+
 var projectCmd = &cobra.Command{
 	Use:   "project",
 	Short: "Manage a Terraform Enterprise project",
@@ -37,16 +40,21 @@ var prListCmd = &cobra.Command{
 	Long:  `List projects`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var buff bytes.Buffer
-		p = tfe.NewProject(client)
-		projects, err := p.List(organization, "", 10)
+		projects, err := project.List(organization, "", 10)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 		}
-		err = jsonapi.MarshalPayload(&buff, projects.Items)
-		if err != nil {
-			fmt.Println(err)
+		if jsonFormat {
+			err = jsonapi.MarshalPayloadWithoutIncluded(&buff, projects.Items)
+			if err != nil {
+				fmt.Println(err)
+			}
+			internal.PrettyPrintJSON(buff.String())
+		} else {
+			for _, p := range projects.Items {
+				fmt.Printf("%s\n", p.Name)
+			}
 		}
-		prettyPrintJSON(buff.String())
 	},
 }
 
@@ -55,7 +63,21 @@ var prCreateCmd = &cobra.Command{
 	Short: "Create a project",
 	Long:  `Create a project`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Create project called")
+		p, err := project.Create(organization, name, description)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if jsonFormat {
+			var buff bytes.Buffer
+			err = jsonapi.MarshalPayloadWithoutIncluded(&buff, p)
+			if err != nil {
+				log.Fatal(err)
+			}
+			internal.PrettyPrintJSON(buff.String())
+		} else {
+			fmt.Printf("%s\n", p.Name)
+		}
+
 	},
 }
 
@@ -64,7 +86,17 @@ var prShowCmd = &cobra.Command{
 	Short: "Show a project",
 	Long:  `Show a project`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Show project called")
+		p, err := project.Show(organization, name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var buff bytes.Buffer
+		err = jsonapi.MarshalPayloadWithoutIncluded(&buff, p)
+		if err != nil {
+			log.Fatal(err)
+		}
+		internal.PrettyPrintJSON(buff.String())
+
 	},
 }
 
@@ -82,12 +114,14 @@ var prDeleteCmd = &cobra.Command{
 	Short: "Delete a project",
 	Long:  `Delete a project`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Delete project called")
+		err := project.Delete(organization, name)
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
 func init() {
-	// p = tfe.NewProject(client)
 	rootCmd.AddCommand(projectCmd)
 	projectCmd.AddCommand(prListCmd)
 	projectCmd.AddCommand(prCreateCmd)
@@ -95,15 +129,8 @@ func init() {
 	projectCmd.AddCommand(prUpdateCmd)
 	projectCmd.AddCommand(prDeleteCmd)
 
-	projectCmd.PersistentFlags().StringVarP(&organization, "organization", "o", "", "The organization to use")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// projectCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// projectCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	projectCmd.PersistentFlags().StringVarP(&organization, "organization", "", "", "The organization to use")
+	projectCmd.PersistentFlags().BoolVarP(&jsonFormat, "json", "", false, "Output in JSON format")
+	projectCmd.PersistentFlags().StringVarP(&name, "name", "n", "", "The name of the project")
+	projectCmd.PersistentFlags().StringVarP(&description, "description", "", "", "The description of the project")
 }

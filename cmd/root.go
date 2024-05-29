@@ -4,11 +4,9 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"log"
 	"os"
+	"tfcli/tfcli"
 
 	"github.com/hashicorp/go-tfe"
 	"github.com/spf13/cobra"
@@ -16,6 +14,8 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var client *tfe.Client
+var project tfcli.Project
+
 var rootCmd = &cobra.Command{
 	Use:   "tfcli",
 	Short: "A CLI client for Terraform Enterprise",
@@ -46,17 +46,9 @@ func init() {
 	// when this action is called directly.
 	tfc, err := tfe.NewClient(tfe.DefaultConfig())
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	client = tfc
+	project = tfcli.NewProject(client)
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-func prettyPrintJSON(jsonStr string) {
-	var prettyJSON bytes.Buffer
-	err := json.Indent(&prettyJSON, []byte(jsonStr), "", "  ")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(prettyJSON.String())
 }
